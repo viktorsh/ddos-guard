@@ -1,0 +1,2 @@
+* Сделать проверку массива конфига, и выдавать ошибки
+* При запуске через крон ошибка. Error: service iptables is not instaled or permission denied. Change user for execution ddos.php
