@@ -86,6 +86,11 @@ class DdosGuard
     }
 
 
+    /**
+     * Читает файл статуса
+     *
+     * @return bool
+     */
     function readStatus()
     {
         $this->status = [];

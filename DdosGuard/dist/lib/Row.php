@@ -13,7 +13,6 @@ class Row
 {
     public $row;
 
-
     public $ip;
     public $unixtime;
     public $timezone;
@@ -27,12 +26,7 @@ class Row
     function __construct($row)
     {
         $this->row = $row;
-
-
-
     }
-
-
 
     function parse($handlerFunction)
     {

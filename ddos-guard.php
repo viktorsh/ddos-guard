@@ -22,7 +22,7 @@ try
         if ($Log)
             $Log->add('Occupied by another process');
 
-        echo 'Occupied by another process' . PHP_EOL;
+        echo 'Occupied by another process ' . PHP_EOL;
     }
 
     $Log->add('finish');

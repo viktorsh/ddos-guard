@@ -1,7 +1,6 @@
 <?php
 namespace sb\DdosGuard;
 
-
 class LogReader
 {
     public $filePath;
@@ -54,8 +53,6 @@ class LogReader
     {
         $this->filePath = $filePath;
         $this->limit = $limit;
-
-
     }
 
     function validateRowData($rowData)
@@ -74,7 +71,6 @@ class LogReader
 
         if (!$rowData['unixtime'])
             throw new \Exception('Property "unixtime" is not defined');
-
     }
 
     function read()
