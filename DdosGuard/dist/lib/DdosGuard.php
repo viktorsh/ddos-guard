@@ -6,39 +6,58 @@ class DdosGuard
 {
     const STATUS_FILE_NAME = 'ddos-guard.status.dat';
 
+    const IPTABLES_COMMAND = '/sbin/iptables';
+
     public $config = [];
 
     public $status = [];
 
     public $Log;
 
+    public $dirPath;
 
-    function __construct($config)
+    function __construct($dirPath)
     {
-        $this->config = array_merge(['disabled'=>false], $config);
+        $this->dirPath = $dirPath;
 
-        foreach($this->config['logs'] as $log)
-        {
-
-            // Проверяем наличие файла парсера строки лога
-            str_replace('.php', '', $log['rowHandler']);
-            $log['handlerFilePath'] = $this->config['dirPath'] . '/handlers/' . $log['rowHandler'] . '.php';
-
-            if (!file_exists($log['handlerFilePath']))
-                throw new \Exception('Parameter rowHandler must much with file in directory handlers/. Change its in config file');
-
-            // Проверяем доступность iptables
-            if ($log['useIptables'] && !$this->checkIptablesPermission())
-                throw new \Exception('service iptables is not instaled or permission denied. Change user for execution ddos.php');
-        }
-
-        $this->statusFileName = $config['dirPath'] . '/' . self::STATUS_FILE_NAME;
+        $this->statusFileName = $this->dirPath . '/' . self::STATUS_FILE_NAME;
 
         if($this->readStatus() === false)
         {
             $this->status['status'] = 0;
             $this->status['logs'] = [];
         }
+    }
+
+
+    function setConfig($config)
+    {
+        $this->config = array_merge(['disabled'=>false], $config);
+
+        foreach($this->config['logs'] as &$log)
+        {
+            // Проверяем наличие файла парсера строки лога
+            str_replace('.php', '', $log['rowHandler']);
+            $log['handlerFilePath'] = $this->dirPath . '/handlers/' . $log['rowHandler'] . '.php';
+
+            if (!file_exists($log['handlerFilePath']))
+                throw new \Exception('Parameter rowHandler must much with file in directory handlers/. Change its in config file');
+
+            // Проверяем доступность iptables и заполненость порта
+            if (@$log['iptables'])
+            {
+                if (!$this->checkIptablesPermission())
+                    throw new \Exception('service iptables is not instaled or permission denied. Change user for execution ddos.php');
+
+                if (empty(@$log['iptables']['port']))
+                    throw new \Exception('Parameter iptables.port is not set');
+            }
+
+            // Пока отключенно блокировку в .htacceess
+            $log['htaccess'] = null;
+        }
+
+
     }
 
     function log($text)
@@ -55,7 +74,7 @@ class DdosGuard
         $output = [];
         $return = null;
 
-        exec('iptables -L 2>/dev/null', $output, $return);
+        exec(self::IPTABLES_COMMAND . ' -L 2>/dev/null', $output, $return);
 
         if($return)
             return false;
@@ -157,6 +176,7 @@ class DdosGuard
             return false;
         }
 
+
         $this->status['status'] = getmypid();
         $this->status['lastSaveTime'] = time();
 
@@ -171,11 +191,12 @@ class DdosGuard
             if(!empty($this->status['logs'][$id]['lastRowTime']))
                 $LogReader->timeFrom = $this->status['logs'][$id]['lastRowTime'];
 
-            $LogReader->handlerFilePath = $this->config['dirPath'] . '/handlers/' . $log['rowHandler'] . '.php';
+            $LogReader->handlerFilePath = $this->dirPath . '/handlers/' . $log['rowHandler'] . '.php';
 
             try
             {
                 $ipList = $LogReader->read();
+
             }
             catch(\Exception $e)
             {
@@ -232,8 +253,8 @@ class DdosGuard
         if(!$this->config['disabled'] && !isset($logStatus['ip'][$ip]))
         {
             // Блокируем в iptables
-            if($logConfig['useIptables'])
-                $this->iptablesInsert($ip, 80);
+            if(@$logConfig['iptables'])
+                $this->iptablesInsert($ip, $logConfig['iptables']['port']);
 
             // Блокируем в htaccess
             if(!empty($logConfig['htaccess']))
@@ -262,8 +283,8 @@ class DdosGuard
         if(isset($logStatus['ip'][$ip]))
         {
             // Удаляем запись из iptables
-            if($logConfig['useIptables'])
-                $this->iptablesDelete($ip, 80);
+            if(@$logConfig['iptables'])
+                $this->iptablesDelete($ip, $logConfig['iptables']['port']);
 
             // удаляем запись из htaccess
             if(!empty($logConfig['htaccess']))
@@ -397,12 +418,12 @@ class DdosGuard
 
     function iptablesInsert($ip, $port = 80)
     {
-        $command = "iptables -L INPUT -v -n | grep {$ip}";
+        $command = self::IPTABLES_COMMAND . " -L INPUT -v -n | grep {$ip}";
         $res = exec($command);
 
         if(!$res)
         {
-            $command = "iptables -A INPUT -p tcp -s {$ip} --dport {$port} -j DROP";
+            $command = self::IPTABLES_COMMAND . " -A INPUT -p tcp -s {$ip} --dport {$port} -j DROP";
             $output = [];
             exec($command, $output);
             $this->log('Execute command: ' . $command);
@@ -413,12 +434,12 @@ class DdosGuard
 
     function iptablesDelete($ip, $port = 80)
     {
-        $command = "iptables -L INPUT -v -n | grep {$ip}";
+        $command = self::IPTABLES_COMMAND . " -L INPUT -v -n | grep {$ip}";
         $res = exec($command);
 
         if($res)
         {
-            $command = "iptables -D INPUT -p tcp -s {$ip} --dport {$port} -j DROP";
+            $command = self::IPTABLES_COMMAND . " -D INPUT -p tcp -s {$ip} --dport {$port} -j DROP";
             $output = [];
             exec($command, $output);
             $this->log('Execute command: ' . $command);

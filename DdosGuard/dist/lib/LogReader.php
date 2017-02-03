@@ -99,8 +99,8 @@ class LogReader
             }
             catch(\Exception $e)
             {
-                \_::d($row, $rowData);
-                \_::dd($e->getMessage());
+                // Выбрасываем ошибку валидации дальше
+                throw new \Exception('Log parser error. ' . $e->getMessage());
             }
 
             $this->lastRowTime = $rowData['unixtime'];
@@ -120,7 +120,6 @@ class LogReader
                 continue;
 
             $arIp[$ip][] = $rowData;
-
 
             if (count($arIp[$ip])>$this->limit[0][0])
             {
