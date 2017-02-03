@@ -4,8 +4,14 @@ namespace sb\DdosGuard;
 
 class DdosGuard
 {
+    /**
+     * Имя файла где хранится ствтус
+     */
     const STATUS_FILE_NAME = 'ddos-guard.status.dat';
 
+    /**
+     * Кооманда iptables
+     */
     const IPTABLES_COMMAND = '/sbin/iptables';
 
     public $config = [];
@@ -29,7 +35,13 @@ class DdosGuard
         }
     }
 
-
+    /**
+     * Загружает конфиг в объект и проверяет ваоидность
+     *
+     * @param $config
+     *
+     * @throws \Exception
+     */
     function setConfig($config)
     {
         $this->config = array_merge(['disabled'=>false], $config);
@@ -56,10 +68,13 @@ class DdosGuard
             // Пока отключенно блокировку в .htacceess
             $log['htaccess'] = null;
         }
-
-
     }
 
+    /**
+     * Добавляет строку в лог
+     *
+     * @param $text
+     */
     function log($text)
     {
         if ($this->Log)
@@ -68,7 +83,11 @@ class DdosGuard
         echo  $text . PHP_EOL;
     }
 
-
+    /**
+     * Проверяет доступность iptables
+     *
+     * @return bool
+     */
     function checkIptablesPermission()
     {
         $output = [];
@@ -83,6 +102,10 @@ class DdosGuard
     }
 
 
+    /**
+     * Сохраняет в файл $this->status
+     *
+     */
     function saveStatus()
     {
         $this->status['lastSaveTime'] = time();
@@ -104,9 +127,15 @@ class DdosGuard
         file_put_contents($this->statusFileName, $content);
     }
 
+    function resetStatus()
+    {
+        $this->status['status'] = 0;
+        $this->saveStatus();
+    }
+
 
     /**
-     * Читает файл статуса
+     * Читает файл статуса в $this->status
      *
      * @return bool
      */
@@ -169,13 +198,17 @@ class DdosGuard
         }
     }
 
+    /**
+     * Выполняет чтение и анализ все файлов лога
+     *
+     * @return bool
+     */
     function run()
     {
         if($this->status['status'] != 0)
         {
             return false;
         }
-
 
         $this->status['status'] = getmypid();
         $this->status['lastSaveTime'] = time();
@@ -270,6 +303,14 @@ class DdosGuard
         $this->saveStatus();
     }
 
+    /**
+     * Разблокирует ip
+     *
+     * @param $id - ид лога из конфига, как правила домен сайта
+     * @param $ip - заблокированный ip
+     *
+     * @throws \Exception
+     */
     function unlockIp($id, $ip)
     {
         $this->log("Unlock {$id} {$ip}");
@@ -295,6 +336,16 @@ class DdosGuard
         }
     }
 
+    /**
+     * Блокирует ip в файле .htaccess
+     *
+     * @param $filePath
+     * @param $time
+     * @param $ip
+     * @param $estimate
+     *
+     * @throws \Exception
+     */
     function htaccessLock($filePath, $time, $ip, $estimate)
     {
         $data = file($filePath);
@@ -315,6 +366,12 @@ class DdosGuard
         file_put_contents($filePath, implode(PHP_EOL, $data));
     }
 
+    /**
+     * Разблокирует ip в файле .haccess
+     *
+     * @param $filePath
+     * @param $ip
+     */
     function htaccessUnlock($filePath, $ip)
     {
         $data = file($filePath);
@@ -416,6 +473,14 @@ class DdosGuard
         }
     }
 
+    /**
+     * Вставляет запись в iptables
+     *
+     * @param $ip
+     * @param int $port
+     *
+     * @return array
+     */
     function iptablesInsert($ip, $port = 80)
     {
         $command = self::IPTABLES_COMMAND . " -L INPUT -v -n | grep {$ip}";
@@ -432,6 +497,14 @@ class DdosGuard
         return $output;
     }
 
+    /**
+     * Удаляет запсь из iptables
+     *
+     * @param $ip
+     * @param int $port
+     *
+     * @return array
+     */
     function iptablesDelete($ip, $port = 80)
     {
         $command = self::IPTABLES_COMMAND . " -L INPUT -v -n | grep {$ip}";
@@ -448,5 +521,3 @@ class DdosGuard
         return $output;
     }
 }
-
-?>

@@ -14,7 +14,7 @@ try
     {
         if ($Ddos->status['status'])
         {
-            echo 'status:'. chr(9) . ' processing...';
+            echo 'status:'. chr(9) . ' processing...' . PHP_EOL;
             echo 'pid:' . chr(9) . chr(9) . $Ddos->status['status'] . PHP_EOL;
             echo 'last saved:' . chr(9) . date('d.m.Y H:i:s', $Ddos->status['lastSaveTime']) . PHP_EOL;
         }
@@ -38,10 +38,14 @@ try
 
         return;
     }
+    elseif(@$argv[1] == 'reset')
+    {
+        $Ddos->resetStatus();
+        return;
+    }
 
     if ($config['logFilePath'])
         $Log = new \sb\DdosGuard\FileOutput($config['logFilePath']);
-
 
     $Ddos->setConfig($config);
 
